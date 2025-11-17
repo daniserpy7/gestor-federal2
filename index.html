@@ -557,17 +557,32 @@
         }
 
         async function logout() {
-            if (isRunning) {
-                stopTimer();
+            try {
+                if (isRunning) {
+                    isRunning = false;
+                    clearInterval(timerInterval);
+                    seconds = 0;
+                }
+                
+                if (window.storage && window.storage.delete) {
+                    await window.storage.delete('currentUser');
+                }
+                
+                currentUser = null;
+                workSessionActive = false;
+                document.getElementById('dashboard').style.display = 'none';
+                document.getElementById('dashboard').innerHTML = '';
+                document.getElementById('authSection').style.display = 'block';
+                document.getElementById('loginEmail').value = '';
+                document.getElementById('loginPassword').value = '';
+                document.getElementById('headerInfo').innerHTML = '';
+                clearMessages();
+            } catch (error) {
+                console.error('Error al cerrar sesión:', error);
+                // Forzar logout local
+                currentUser = null;
+                location.reload();
             }
-            await window.storage.delete('currentUser');
-            currentUser = null;
-            workSessionActive = false;
-            document.getElementById('dashboard').style.display = 'none';
-            document.getElementById('authSection').style.display = 'block';
-            document.getElementById('loginEmail').value = '';
-            document.getElementById('loginPassword').value = '';
-            clearMessages();
         }
 
         async function showDashboard() {
