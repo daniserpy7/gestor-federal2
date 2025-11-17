@@ -487,6 +487,15 @@
 
         // Initialize - Create default admin
         window.onload = async function() {
+            console.log('Página cargada');
+            
+            // Verificar que window.storage existe
+            if (typeof window.storage === 'undefined') {
+                console.error('window.storage no está disponible. Esta aplicación solo funciona en claude.ai');
+                showError('Esta aplicación requiere ejecutarse en claude.ai para funcionar correctamente');
+                return;
+            }
+            
             await createDefaultAdmin();
             await checkSession();
         };
@@ -507,10 +516,11 @@
                         createdBy: 'system'
                     };
                     await window.storage.set(`user:${adminEmail}`, JSON.stringify(adminUser));
-                    console.log('Admin por defecto creado');
+                    console.log('✅ Admin por defecto creado');
+                    showSuccess('Usuario administrador creado. Email: admin@sistema.com | Pass: Admin123!');
                 }
             } catch (error) {
-                console.log('Error al crear admin por defecto');
+                console.error('Error al crear admin por defecto:', error);
             }
         }
 
@@ -522,7 +532,7 @@
                     await showDashboard();
                 }
             } catch (error) {
-                console.log('No session found');
+                console.log('No hay sesión activa');
             }
         }
 
@@ -1014,15 +1024,24 @@
         }
 
         async function startTimer() {
+            if (!currentUser) {
+                showError('Debes iniciar sesión primero');
+                return;
+            }
+
             if (!workSessionActive && (currentUser.role === 'medio' || currentUser.role === 'basico')) {
                 showError('Necesitas validar un código antes de iniciar el cronómetro');
                 return;
             }
 
             isRunning = true;
-            document.getElementById('startBtn').classList.add('hidden');
-            document.getElementById('pauseBtn').classList.remove('hidden');
-            document.getElementById('stopBtn').classList.remove('hidden');
+            const startBtn = document.getElementById('startBtn');
+            const pauseBtn = document.getElementById('pauseBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            
+            if (startBtn) startBtn.classList.add('hidden');
+            if (pauseBtn) pauseBtn.classList.remove('hidden');
+            if (stopBtn) stopBtn.classList.remove('hidden');
 
             timerInterval = setInterval(() => {
                 seconds++;
@@ -1031,21 +1050,30 @@
         }
 
         function pauseTimer() {
+            if (!currentUser) return;
+            
             isRunning = false;
             clearInterval(timerInterval);
-            document.getElementById('pauseBtn').classList.add('hidden');
-            document.getElementById('startBtn').classList.remove('hidden');
+            
+            const pauseBtn = document.getElementById('pauseBtn');
+            const startBtn = document.getElementById('startBtn');
+            
+            if (pauseBtn) pauseBtn.classList.add('hidden');
+            if (startBtn) startBtn.classList.remove('hidden');
         }
 
         async function stopTimer() {
+            if (!currentUser) return;
+            
             isRunning = false;
             clearInterval(timerInterval);
 
             if (seconds > 0) {
-                const task = document.getElementById('taskDescription').value.trim() || 'Actividad sin descripción';
+                const taskInput = document.getElementById('taskDescription');
+                const task = taskInput ? taskInput.value.trim() : 'Actividad sin descripción';
                 
                 const activity = {
-                    task: task,
+                    task: task || 'Actividad sin descripción',
                     duration: seconds,
                     date: new Date().toISOString(),
                     role: currentUser.role,
@@ -1074,21 +1102,32 @@
 
             seconds = 0;
             updateTimerDisplay();
-            document.getElementById('taskDescription').value = '';
-            document.getElementById('stopBtn').classList.add('hidden');
-            document.getElementById('pauseBtn').classList.add('hidden');
-            document.getElementById('startBtn').classList.remove('hidden');
+            
+            const taskInput = document.getElementById('taskDescription');
+            const stopBtn = document.getElementById('stopBtn');
+            const pauseBtn = document.getElementById('pauseBtn');
+            const startBtn = document.getElementById('startBtn');
+            
+            if (taskInput) taskInput.value = '';
+            if (stopBtn) stopBtn.classList.add('hidden');
+            if (pauseBtn) pauseBtn.classList.add('hidden');
+            if (startBtn) startBtn.classList.remove('hidden');
         }
 
         function updateTimerDisplay() {
+            const timerElement = document.getElementById('timer');
+            if (!timerElement) return;
+            
             const hours = Math.floor(seconds / 3600);
             const minutes = Math.floor((seconds % 3600) / 60);
             const secs = seconds % 60;
-            document.getElementById('timer').textContent = 
+            timerElement.textContent = 
                 `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
         }
 
         async function loadActivities() {
+            if (!currentUser) return;
+            
             try {
                 const result = await window.storage.get(`activities:${currentUser.email}`);
                 let activities = [];
@@ -1097,6 +1136,7 @@
                 }
 
                 const activityList = document.getElementById('activityList');
+                if (!activityList) return;
                 
                 if (activities.length === 0) {
                     activityList.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">No hay actividades registradas</p>';
@@ -1117,7 +1157,10 @@
                     </div>
                 `).join('');
             } catch (error) {
-                document.getElementById('activityList').innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">No hay actividades registradas</p>';
+                const activityList = document.getElementById('activityList');
+                if (activityList) {
+                    activityList.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">No hay actividades registradas</p>';
+                }
             }
         }
 
