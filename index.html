@@ -74,16 +74,22 @@
             font-weight: 500;
         }
 
-        input, select {
+        input, select, textarea {
             width: 100%;
             padding: 12px 15px;
             border: 2px solid #e0e0e0;
             border-radius: 8px;
             font-size: 14px;
             transition: border-color 0.3s;
+            font-family: inherit;
         }
 
-        input:focus, select:focus {
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        input:focus, select:focus, textarea:focus {
             outline: none;
             border-color: #2a5298;
         }
@@ -110,11 +116,30 @@
             transform: translateY(0);
         }
 
-        .secondary-btn {
+        .btn-secondary {
             background: white;
             color: #2a5298;
             border: 2px solid #2a5298;
             margin-top: 10px;
+        }
+
+        .btn-small {
+            width: auto;
+            padding: 10px 20px;
+            font-size: 14px;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #333;
         }
 
         .logout-btn {
@@ -149,6 +174,38 @@
 
         .user-details p {
             color: #666;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
         }
 
         /* Code Section */
@@ -239,11 +296,7 @@
             padding: 12px 30px;
         }
 
-        .start-btn { background: #28a745; }
-        .pause-btn { background: #ffc107; color: #333; }
-        .stop-btn { background: #dc3545; }
-
-        /* Activity Log */
+        /* Activity & Tables */
         .activity-section {
             margin-top: 30px;
         }
@@ -279,32 +332,35 @@
             font-size: 14px;
         }
 
-        /* Generated Codes Table */
-        .codes-table {
+        .data-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
         }
 
-        .codes-table th,
-        .codes-table td {
+        .data-table th,
+        .data-table td {
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid #e0e0e0;
         }
 
-        .codes-table th {
+        .data-table th {
             background: #f8f9ff;
             color: #1e3c72;
             font-weight: 600;
         }
 
-        .code-used {
+        .data-table tr:hover {
+            background: #f8f9ff;
+        }
+
+        .badge-used {
             color: #28a745;
             font-weight: 600;
         }
 
-        .code-unused {
+        .badge-unused {
             color: #ffc107;
             font-weight: 600;
         }
@@ -332,7 +388,7 @@
 
         .hidden { display: none; }
 
-        /* Grid Layout */
+        /* Grid & Cards */
         .grid-2 {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -359,6 +415,18 @@
             margin: 10px 0;
         }
 
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .action-buttons button {
+            width: auto;
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+
         @media (max-width: 768px) {
             .header {
                 flex-direction: column;
@@ -371,6 +439,10 @@
 
             .code-display {
                 font-size: 24px;
+            }
+
+            .tabs {
+                overflow-x: auto;
             }
         }
     </style>
@@ -387,48 +459,18 @@
             <div class="error-message" id="errorMessage"></div>
             <div class="success-message" id="successMessage"></div>
 
-            <!-- Auth Section -->
+            <!-- Login Section -->
             <div id="authSection" class="auth-section">
-                <div id="loginForm">
-                    <h2 style="text-align: center; margin-bottom: 30px; color: #333;">Iniciar Sesión</h2>
-                    <div class="form-group">
-                        <label for="loginEmail">Correo Electrónico</label>
-                        <input type="email" id="loginEmail" placeholder="tu@email.com">
-                    </div>
-                    <div class="form-group">
-                        <label for="loginPassword">Contraseña</label>
-                        <input type="password" id="loginPassword" placeholder="••••••••">
-                    </div>
-                    <button onclick="login()">Iniciar Sesión</button>
-                    <button class="secondary-btn" onclick="showRegister()">Crear Nueva Cuenta</button>
+                <h2 style="text-align: center; margin-bottom: 30px; color: #333;">Iniciar Sesión</h2>
+                <div class="form-group">
+                    <label for="loginEmail">Correo Electrónico</label>
+                    <input type="email" id="loginEmail" placeholder="tu@email.com">
                 </div>
-
-                <div id="registerForm" class="hidden">
-                    <h2 style="text-align: center; margin-bottom: 30px; color: #333;">Crear Cuenta</h2>
-                    <div class="form-group">
-                        <label for="registerName">Nombre Completo</label>
-                        <input type="text" id="registerName" placeholder="Juan Pérez">
-                    </div>
-                    <div class="form-group">
-                        <label for="registerEmail">Correo Electrónico</label>
-                        <input type="email" id="registerEmail" placeholder="tu@email.com">
-                    </div>
-                    <div class="form-group">
-                        <label for="registerPassword">Contraseña</label>
-                        <input type="password" id="registerPassword" placeholder="••••••••">
-                    </div>
-                    <div class="form-group">
-                        <label for="registerRole">Rol</label>
-                        <select id="registerRole">
-                            <option value="basico">Básico</option>
-                            <option value="medio">Medio</option>
-                            <option value="alto">Alto</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                    </div>
-                    <button onclick="register()">Crear Cuenta</button>
-                    <button class="secondary-btn" onclick="showLogin()">Ya tengo cuenta</button>
+                <div class="form-group">
+                    <label for="loginPassword">Contraseña</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••">
                 </div>
+                <button onclick="login()">Iniciar Sesión</button>
             </div>
 
             <!-- Dashboard -->
@@ -443,10 +485,34 @@
         let isRunning = false;
         let workSessionActive = false;
 
-        // Initialize
+        // Initialize - Create default admin
         window.onload = async function() {
+            await createDefaultAdmin();
             await checkSession();
         };
+
+        async function createDefaultAdmin() {
+            try {
+                const adminEmail = 'admin@sistema.com';
+                const existingAdmin = await window.storage.get(`user:${adminEmail}`);
+                
+                if (!existingAdmin) {
+                    const adminUser = {
+                        name: 'Administrador del Sistema',
+                        email: adminEmail,
+                        password: 'Admin123!',
+                        role: 'admin',
+                        username: 'admin',
+                        createdAt: new Date().toISOString(),
+                        createdBy: 'system'
+                    };
+                    await window.storage.set(`user:${adminEmail}`, JSON.stringify(adminUser));
+                    console.log('Admin por defecto creado');
+                }
+            } catch (error) {
+                console.log('Error al crear admin por defecto');
+            }
+        }
 
         async function checkSession() {
             try {
@@ -457,62 +523,6 @@
                 }
             } catch (error) {
                 console.log('No session found');
-            }
-        }
-
-        function showRegister() {
-            document.getElementById('loginForm').classList.add('hidden');
-            document.getElementById('registerForm').classList.remove('hidden');
-            clearMessages();
-        }
-
-        function showLogin() {
-            document.getElementById('registerForm').classList.add('hidden');
-            document.getElementById('loginForm').classList.remove('hidden');
-            clearMessages();
-        }
-
-        async function register() {
-            const name = document.getElementById('registerName').value.trim();
-            const email = document.getElementById('registerEmail').value.trim().toLowerCase();
-            const password = document.getElementById('registerPassword').value;
-            const role = document.getElementById('registerRole').value;
-
-            if (!name || !email || !password) {
-                showError('Por favor completa todos los campos');
-                return;
-            }
-
-            if (password.length < 6) {
-                showError('La contraseña debe tener al menos 6 caracteres');
-                return;
-            }
-
-            try {
-                const existingUser = await window.storage.get(`user:${email}`);
-                if (existingUser) {
-                    showError('Este correo ya está registrado');
-                    return;
-                }
-
-                const user = {
-                    name: name,
-                    email: email,
-                    password: password,
-                    role: role,
-                    createdAt: new Date().toISOString()
-                };
-
-                await window.storage.set(`user:${email}`, JSON.stringify(user));
-                showSuccess('¡Cuenta creada! Iniciando sesión...');
-                
-                setTimeout(async () => {
-                    currentUser = user;
-                    await window.storage.set('currentUser', JSON.stringify(user));
-                    await showDashboard();
-                }, 1500);
-            } catch (error) {
-                showError('Error al crear la cuenta');
             }
         }
 
@@ -555,7 +565,8 @@
             workSessionActive = false;
             document.getElementById('dashboard').style.display = 'none';
             document.getElementById('authSection').style.display = 'block';
-            showLogin();
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginPassword').value = '';
             clearMessages();
         }
 
@@ -596,21 +607,196 @@
                     <button class="logout-btn" onclick="logout()">Cerrar Sesión</button>
                 </div>
 
-                <div class="code-section">
-                    <h3>🔑 Generar Código para Usuario Alto</h3>
-                    <button onclick="generateCodeForAlto()" style="width: auto; padding: 12px 30px;">
-                        Generar Nuevo Código
-                    </button>
-                    <div id="adminCodeDisplay"></div>
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('users')">👥 Gestión de Usuarios</button>
+                    <button class="tab" onclick="switchTab('codes')">🔑 Códigos para Alto</button>
                 </div>
 
-                <div class="card">
-                    <h3>📋 Códigos Generados</h3>
-                    <div id="adminCodesList"></div>
+                <div id="usersTab" class="tab-content active">
+                    <div class="card">
+                        <h3>➕ Crear Nuevo Usuario</h3>
+                        <div class="form-group">
+                            <label for="newUserName">Nombre Completo</label>
+                            <input type="text" id="newUserName" placeholder="Juan Pérez">
+                        </div>
+                        <div class="form-group">
+                            <label for="newUsername">Nombre de Usuario</label>
+                            <input type="text" id="newUsername" placeholder="jperez">
+                        </div>
+                        <div class="form-group">
+                            <label for="newUserEmail">Correo Electrónico</label>
+                            <input type="email" id="newUserEmail" placeholder="juan@empresa.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="newUserPassword">Contraseña</label>
+                            <input type="password" id="newUserPassword" placeholder="Mínimo 6 caracteres">
+                        </div>
+                        <div class="form-group">
+                            <label for="newUserRole">Rol</label>
+                            <select id="newUserRole">
+                                <option value="basico">Básico</option>
+                                <option value="medio">Medio</option>
+                                <option value="alto">Alto</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <button onclick="createUser()">Crear Usuario</button>
+                    </div>
+
+                    <div class="card" style="margin-top: 30px;">
+                        <h3>📋 Lista de Usuarios</h3>
+                        <div id="usersList"></div>
+                    </div>
+                </div>
+
+                <div id="codesTab" class="tab-content">
+                    <div class="code-section">
+                        <h3>🔑 Generar Código para Usuario Alto</h3>
+                        <button onclick="generateCodeForAlto()" class="btn-small">
+                            Generar Nuevo Código
+                        </button>
+                        <div id="adminCodeDisplay"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3>📋 Códigos Generados</h3>
+                        <div id="adminCodesList"></div>
+                    </div>
                 </div>
             `;
 
+            await loadAllUsers();
             await loadAdminCodes();
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.add('active');
+        }
+
+        async function createUser() {
+            const name = document.getElementById('newUserName').value.trim();
+            const username = document.getElementById('newUsername').value.trim();
+            const email = document.getElementById('newUserEmail').value.trim().toLowerCase();
+            const password = document.getElementById('newUserPassword').value;
+            const role = document.getElementById('newUserRole').value;
+
+            if (!name || !username || !email || !password) {
+                showError('Por favor completa todos los campos');
+                return;
+            }
+
+            if (password.length < 6) {
+                showError('La contraseña debe tener al menos 6 caracteres');
+                return;
+            }
+
+            try {
+                const existingUser = await window.storage.get(`user:${email}`);
+                if (existingUser) {
+                    showError('Este correo ya está registrado');
+                    return;
+                }
+
+                const user = {
+                    name: name,
+                    username: username,
+                    email: email,
+                    password: password,
+                    role: role,
+                    createdAt: new Date().toISOString(),
+                    createdBy: currentUser.email
+                };
+
+                await window.storage.set(`user:${email}`, JSON.stringify(user));
+                
+                // Add to users list
+                let allUsers = [];
+                try {
+                    const result = await window.storage.get('all:users');
+                    if (result) allUsers = JSON.parse(result.value);
+                } catch (e) {}
+                allUsers.push(email);
+                await window.storage.set('all:users', JSON.stringify(allUsers));
+
+                showSuccess(`Usuario ${name} creado exitosamente`);
+                
+                // Clear form
+                document.getElementById('newUserName').value = '';
+                document.getElementById('newUsername').value = '';
+                document.getElementById('newUserEmail').value = '';
+                document.getElementById('newUserPassword').value = '';
+                
+                await loadAllUsers();
+            } catch (error) {
+                showError('Error al crear el usuario');
+            }
+        }
+
+        async function loadAllUsers() {
+            try {
+                const result = await window.storage.get('all:users');
+                if (!result) {
+                    document.getElementById('usersList').innerHTML = '<p style="color: #999;">No hay usuarios creados</p>';
+                    return;
+                }
+
+                const userEmails = JSON.parse(result.value);
+                let html = '<table class="data-table"><thead><tr><th>Nombre</th><th>Usuario</th><th>Email</th><th>Rol</th><th>Acciones</th></tr></thead><tbody>';
+
+                for (const email of userEmails) {
+                    try {
+                        const userResult = await window.storage.get(`user:${email}`);
+                        if (userResult) {
+                            const user = JSON.parse(userResult.value);
+                            const roleNames = {admin: 'Admin', alto: 'Alto', medio: 'Medio', basico: 'Básico'};
+                            const roleClass = `role-${user.role}`;
+                            
+                            html += `<tr>
+                                <td><strong>${user.name}</strong></td>
+                                <td>${user.username || '-'}</td>
+                                <td>${user.email}</td>
+                                <td><span class="role-badge ${roleClass}" style="font-size: 12px; padding: 4px 12px;">${roleNames[user.role]}</span></td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-danger btn-small" onclick="deleteUser('${user.email}')">Eliminar</button>
+                                    </div>
+                                </td>
+                            </tr>`;
+                        }
+                    } catch (e) {}
+                }
+
+                html += '</tbody></table>';
+                document.getElementById('usersList').innerHTML = html;
+            } catch (error) {
+                document.getElementById('usersList').innerHTML = '<p style="color: #999;">No hay usuarios creados</p>';
+            }
+        }
+
+        async function deleteUser(email) {
+            if (!confirm('¿Estás seguro de eliminar este usuario?')) return;
+
+            try {
+                await window.storage.delete(`user:${email}`);
+                
+                let allUsers = [];
+                try {
+                    const result = await window.storage.get('all:users');
+                    if (result) allUsers = JSON.parse(result.value);
+                } catch (e) {}
+                
+                allUsers = allUsers.filter(e => e !== email);
+                await window.storage.set('all:users', JSON.stringify(allUsers));
+
+                showSuccess('Usuario eliminado exitosamente');
+                await loadAllUsers();
+            } catch (error) {
+                showError('Error al eliminar usuario');
+            }
         }
 
         async function generateCodeForAlto() {
@@ -618,131 +804,6 @@
             const codeData = {
                 code: code,
                 forRole: 'alto',
-                generatedBy: currentUser.email,
-                generatedAt: new Date().toISOString(),
-                used: false,
-                usedBy: null
-            };
-
-            try {
-                await window.storage.set(`code:${code}`, JSON.stringify(codeData));
-                
-                let allCodes = [];
-                try {
-                    const result = await window.storage.get('admin:codes');
-                    if (result) allCodes = JSON.parse(result.value);
-                } catch (e) {}
-                
-                allCodes.push(code);
-                await window.storage.set('admin:codes', JSON.stringify(allCodes));
-
-                document.getElementById('adminCodeDisplay').innerHTML = `
-                    <div class="code-display">${code}</div>
-                    <p style="text-align: center; color: #666;">Código generado exitosamente. Compártelo con un usuario Alto.</p>
-                `;
-                
-                await loadAdminCodes();
-                showSuccess('Código generado exitosamente');
-            } catch (error) {
-                showError('Error al generar código');
-            }
-        }
-
-        async function loadAdminCodes() {
-            try {
-                const result = await window.storage.get('admin:codes');
-                if (!result) {
-                    document.getElementById('adminCodesList').innerHTML = '<p style="color: #999;">No hay códigos generados</p>';
-                    return;
-                }
-
-                const codes = JSON.parse(result.value);
-                let html = '<table class="codes-table"><thead><tr><th>Código</th><th>Generado</th><th>Estado</th><th>Usado por</th></tr></thead><tbody>';
-
-                for (const code of codes) {
-                    try {
-                        const codeResult = await window.storage.get(`code:${code}`);
-                        if (codeResult) {
-                            const codeData = JSON.parse(codeResult.value);
-                            const date = new Date(codeData.generatedAt).toLocaleString('es-ES');
-                            const status = codeData.used ? 
-                                `<span class="code-used">✓ Usado</span>` : 
-                                `<span class="code-unused">⏳ Pendiente</span>`;
-                            const usedBy = codeData.usedBy || '-';
-                            
-                            html += `<tr>
-                                <td><strong>${code}</strong></td>
-                                <td>${date}</td>
-                                <td>${status}</td>
-                                <td>${usedBy}</td>
-                            </tr>`;
-                        }
-                    } catch (e) {}
-                }
-
-                html += '</tbody></table>';
-                document.getElementById('adminCodesList').innerHTML = html;
-            } catch (error) {
-                document.getElementById('adminCodesList').innerHTML = '<p style="color: #999;">No hay códigos generados</p>';
-            }
-        }
-
-        async function renderAltoDashboard(container) {
-            container.innerHTML = `
-                <div class="user-info">
-                    <div class="user-details">
-                        <h2>Panel de Usuario Alto</h2>
-                        <p>${currentUser.name} - ${currentUser.email}</p>
-                    </div>
-                    <button class="logout-btn" onclick="logout()">Cerrar Sesión</button>
-                </div>
-
-                <div class="grid-2">
-                    <div class="code-section">
-                        <h3>🔑 Generar Código para Medio/Básico</h3>
-                        <button onclick="generateCodeForWorker()" style="width: 100%; padding: 12px;">
-                            Generar Nuevo Código
-                        </button>
-                        <div id="altoCodeDisplay"></div>
-                    </div>
-
-                    <div class="card">
-                        <h3>📊 Estadísticas</h3>
-                        <div class="stat-number" id="altoStats">0</div>
-                        <p style="color: #666;">Códigos generados</p>
-                    </div>
-                </div>
-
-                <div class="timer-section">
-                    <h3>⏱️ Tu Cronómetro</h3>
-                    <input type="text" id="taskDescription" placeholder="¿En qué estás trabajando?" style="text-align: center; margin-bottom: 15px;">
-                    <div class="timer" id="timer">00:00:00</div>
-                    <div class="timer-controls">
-                        <button class="start-btn" id="startBtn" onclick="startTimer()">▶ Iniciar</button>
-                        <button class="pause-btn hidden" id="pauseBtn" onclick="pauseTimer()">⏸ Pausar</button>
-                        <button class="stop-btn hidden" id="stopBtn" onclick="stopTimer()">⏹ Detener</button>
-                    </div>
-                </div>
-
-                <div class="activity-section">
-                    <h3>📋 Tu Historial de Actividades</h3>
-                    <div id="activityList"></div>
-                </div>
-
-                <div class="card" style="margin-top: 30px;">
-                    <h3>📋 Códigos Generados por Ti</h3>
-                    <div id="altoCodesList"></div>
-                </div>
-            `;
-
-            await loadAltoData();
-        }
-
-        async function generateCodeForWorker() {
-            const code = generateCode();
-            const codeData = {
-                code: code,
-                forRole: 'worker',
                 generatedBy: currentUser.email,
                 generatedAt: new Date().toISOString(),
                 used: false,
@@ -784,7 +845,7 @@
                 if (codes.length === 0) {
                     document.getElementById('altoCodesList').innerHTML = '<p style="color: #999;">No has generado códigos aún</p>';
                 } else {
-                    let html = '<table class="codes-table"><thead><tr><th>Código</th><th>Generado</th><th>Estado</th></tr></thead><tbody>';
+                    let html = '<table class="data-table"><thead><tr><th>Código</th><th>Generado</th><th>Estado</th></tr></thead><tbody>';
                     
                     for (const code of codes) {
                         try {
@@ -793,8 +854,8 @@
                                 const codeData = JSON.parse(codeResult.value);
                                 const date = new Date(codeData.generatedAt).toLocaleString('es-ES');
                                 const status = codeData.used ? 
-                                    `<span class="code-used">✓ Usado</span>` : 
-                                    `<span class="code-unused">⏳ Pendiente</span>`;
+                                    `<span class="badge-used">✓ Usado</span>` : 
+                                    `<span class="badge-unused">⏳ Pendiente</span>`;
                                 
                                 html += `<tr>
                                     <td><strong>${code}</strong></td>
@@ -822,7 +883,7 @@
                 <div class="user-info">
                     <div class="user-details">
                         <h2>Panel de Usuario ${roleName}</h2>
-                        <p>${currentUser.name} - ${currentUser.email}</p>
+                        <p>${currentUser.name} (@${currentUser.username || 'sin usuario'}) - ${currentUser.email}</p>
                     </div>
                     <button class="logout-btn" onclick="logout()">Cerrar Sesión</button>
                 </div>
@@ -849,9 +910,9 @@
                         <input type="text" id="taskDescription" placeholder="¿En qué estás trabajando?" style="text-align: center; margin-bottom: 15px;">
                         <div class="timer" id="timer">00:00:00</div>
                         <div class="timer-controls">
-                            <button class="start-btn" id="startBtn" onclick="startTimer()">▶ Iniciar</button>
-                            <button class="pause-btn hidden" id="pauseBtn" onclick="pauseTimer()">⏸ Pausar</button>
-                            <button class="stop-btn hidden" id="stopBtn" onclick="stopTimer()">⏹ Detener</button>
+                            <button class="btn-success" id="startBtn" onclick="startTimer()">▶ Iniciar</button>
+                            <button class="btn-warning hidden" id="pauseBtn" onclick="pauseTimer()">⏸ Pausar</button>
+                            <button class="btn-danger hidden" id="stopBtn" onclick="stopTimer()">⏹ Detener</button>
                         </div>
                     </div>
 
@@ -910,13 +971,11 @@
                     return;
                 }
 
-                // Marcar código como usado
                 codeData.used = true;
                 codeData.usedBy = currentUser.email;
                 codeData.usedAt = new Date().toISOString();
                 await window.storage.set(`code:${code}`, JSON.stringify(codeData));
 
-                // Crear sesión de trabajo
                 const session = {
                     active: true,
                     code: code,
@@ -974,7 +1033,9 @@
                     task: task,
                     duration: seconds,
                     date: new Date().toISOString(),
-                    role: currentUser.role
+                    role: currentUser.role,
+                    userName: currentUser.name,
+                    userEmail: currentUser.email
                 };
 
                 try {
@@ -1092,5 +1153,129 @@
         }
     </script>
 </body>
-</html>
+</html> new Date().toISOString(),
+                used: false,
+                usedBy: null
+            };
+
+            try {
+                await window.storage.set(`code:${code}`, JSON.stringify(codeData));
                 
+                let allCodes = [];
+                try {
+                    const result = await window.storage.get('admin:codes');
+                    if (result) allCodes = JSON.parse(result.value);
+                } catch (e) {}
+                
+                allCodes.push(code);
+                await window.storage.set('admin:codes', JSON.stringify(allCodes));
+
+                document.getElementById('adminCodeDisplay').innerHTML = `
+                    <div class="code-display">${code}</div>
+                    <p style="text-align: center; color: #666;">Código generado exitosamente. Compártelo con un usuario Alto.</p>
+                `;
+                
+                await loadAdminCodes();
+                showSuccess('Código generado exitosamente');
+            } catch (error) {
+                showError('Error al generar código');
+            }
+        }
+
+        async function loadAdminCodes() {
+            try {
+                const result = await window.storage.get('admin:codes');
+                if (!result) {
+                    document.getElementById('adminCodesList').innerHTML = '<p style="color: #999;">No hay códigos generados</p>';
+                    return;
+                }
+
+                const codes = JSON.parse(result.value);
+                let html = '<table class="data-table"><thead><tr><th>Código</th><th>Generado</th><th>Estado</th><th>Usado por</th></tr></thead><tbody>';
+
+                for (const code of codes) {
+                    try {
+                        const codeResult = await window.storage.get(`code:${code}`);
+                        if (codeResult) {
+                            const codeData = JSON.parse(codeResult.value);
+                            const date = new Date(codeData.generatedAt).toLocaleString('es-ES');
+                            const status = codeData.used ? 
+                                `<span class="badge-used">✓ Usado</span>` : 
+                                `<span class="badge-unused">⏳ Pendiente</span>`;
+                            const usedBy = codeData.usedBy || '-';
+                            
+                            html += `<tr>
+                                <td><strong>${code}</strong></td>
+                                <td>${date}</td>
+                                <td>${status}</td>
+                                <td>${usedBy}</td>
+                            </tr>`;
+                        }
+                    } catch (e) {}
+                }
+
+                html += '</tbody></table>';
+                document.getElementById('adminCodesList').innerHTML = html;
+            } catch (error) {
+                document.getElementById('adminCodesList').innerHTML = '<p style="color: #999;">No hay códigos generados</p>';
+            }
+        }
+
+        async function renderAltoDashboard(container) {
+            container.innerHTML = `
+                <div class="user-info">
+                    <div class="user-details">
+                        <h2>Panel de Usuario Alto</h2>
+                        <p>${currentUser.name} (@${currentUser.username || 'sin usuario'}) - ${currentUser.email}</p>
+                    </div>
+                    <button class="logout-btn" onclick="logout()">Cerrar Sesión</button>
+                </div>
+
+                <div class="grid-2">
+                    <div class="code-section">
+                        <h3>🔑 Generar Código para Medio/Básico</h3>
+                        <button onclick="generateCodeForWorker()" style="width: 100%; padding: 12px;">
+                            Generar Nuevo Código
+                        </button>
+                        <div id="altoCodeDisplay"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3>📊 Estadísticas</h3>
+                        <div class="stat-number" id="altoStats">0</div>
+                        <p style="color: #666;">Códigos generados</p>
+                    </div>
+                </div>
+
+                <div class="timer-section">
+                    <h3>⏱️ Tu Cronómetro</h3>
+                    <input type="text" id="taskDescription" placeholder="¿En qué estás trabajando?" style="text-align: center; margin-bottom: 15px;">
+                    <div class="timer" id="timer">00:00:00</div>
+                    <div class="timer-controls">
+                        <button class="btn-success" id="startBtn" onclick="startTimer()">▶ Iniciar</button>
+                        <button class="btn-warning hidden" id="pauseBtn" onclick="pauseTimer()">⏸ Pausar</button>
+                        <button class="btn-danger hidden" id="stopBtn" onclick="stopTimer()">⏹ Detener</button>
+                    </div>
+                </div>
+
+                <div class="activity-section">
+                    <h3>📋 Tu Historial de Actividades</h3>
+                    <div id="activityList"></div>
+                </div>
+
+                <div class="card" style="margin-top: 30px;">
+                    <h3>📋 Códigos Generados por Ti</h3>
+                    <div id="altoCodesList"></div>
+                </div>
+            `;
+
+            await loadAltoData();
+        }
+
+        async function generateCodeForWorker() {
+            const code = generateCode();
+            const codeData = {
+                code: code,
+                forRole: 'worker',
+                generatedBy: currentUser.email,
+                generatedAt:
