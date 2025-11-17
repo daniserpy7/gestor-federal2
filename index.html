@@ -468,7 +468,7 @@
                     <label for="loginPassword">Contraseña</label>
                     <input type="password" id="loginPassword" placeholder="Admin123!">
                 </div>
-                <button onclick="login()">Iniciar Sesión</button>
+                <button id="loginBtn">Iniciar Sesión</button>
                 <p style="text-align: center; margin-top: 20px; color: #666; font-size: 14px;">
                     Usuario por defecto: <strong>admin@sistema.com</strong><br>
                     Contraseña: <strong>Admin123!</strong>
@@ -480,6 +480,7 @@
     </div>
 
     <script>
+        'use strict';
         // Storage wrapper para localStorage
         const storage = {
             get: function(key) {
@@ -522,7 +523,342 @@
                     createdAt: new Date().toISOString(),
                     createdBy: 'system'
                 };
-                storage.set(`user:${adminEmail}`, JSON.stringify(adminUser));
+                storage.set(`alto:codes:${currentUser.email}`, JSON.stringify(userCodes));
+
+            document.getElementById('altoCodeDisplay').innerHTML = `
+                <div class="code-display">${code}</div>
+                <p style="text-align: center; color: #666;">Comparte este código con usuarios Medio o Básico</p>
+            `;
+            
+            loadAltoData();
+            showSuccess('Código generado exitosamente');
+        }
+
+        function loadAltoData() {
+            const result = storage.get(`alto:codes:${currentUser.email}`);
+            let codes = [];
+            if (result) codes = JSON.parse(result.value);
+
+            document.getElementById('altoStats').textContent = codes.length;
+
+            if (codes.length === 0) {
+                document.getElementById('altoCodesList').innerHTML = '<p style="color: #999;">No has generado códigos aún</p>';
+            } else {
+                let html = '<table class="data-table"><thead><tr><th>Código</th><th>Generado</th><th>Estado</th></tr></thead><tbody>';
+                
+                for (const code of codes) {
+                    const codeResult = storage.get(`code:${code}`);
+                    if (codeResult) {
+                        const codeData = JSON.parse(codeResult.value);
+                        const date = new Date(codeData.generatedAt).toLocaleString('es-ES');
+                        const status = codeData.used ? 
+                            `<span class="badge-used">✓ Usado</span>` : 
+                            `<span class="badge-unused">⏳ Pendiente</span>`;
+                        
+                        html += `<tr>
+                            <td><strong>${code}</strong></td>
+                            <td>${date}</td>
+                            <td>${status}</td>
+                        </tr>`;
+                    }
+                }
+                
+                html += '</tbody></table>';
+                document.getElementById('altoCodesList').innerHTML = html;
+            }
+
+            loadActivities();
+        }
+
+        function renderBasicMedioDashboard(container) {
+            const roleName = currentUser.role === 'medio' ? 'Medio' : 'Básico';
+            
+            container.innerHTML = `
+                <div class="user-info">
+                    <div class="user-details">
+                        <h2>Panel de Usuario ${roleName}</h2>
+                        <p>${currentUser.name} (@${currentUser.username || 'sin usuario'}) - ${currentUser.email}</p>
+                    </div>
+                    <button class="logout-btn" onclick="logout()">Cerrar Sesión</button>
+                </div>
+
+                <div id="codeInputSection" class="code-input-section">
+                    <h3>🔐 Solicitar Código de Acceso</h3>
+                    <div class="code-status status-pending">
+                        ⚠️ Necesitas un código de un usuario Alto para iniciar tu jornada
+                    </div>
+                    <div class="form-group">
+                        <label for="accessCode">Ingresa el código proporcionado por tu supervisor Alto:</label>
+                        <input type="text" id="accessCode" placeholder="Ejemplo: ABC123" style="text-transform: uppercase;">
+                    </div>
+                    <button onclick="validateCode()">Validar Código e Iniciar Jornada</button>
+                </div>
+
+                <div id="workerTimerSection" class="hidden">
+                    <div class="code-status status-active" style="margin-bottom: 30px;">
+                        ✅ Jornada activa - Puedes registrar tu tiempo
+                    </div>
+
+                    <div class="timer-section">
+                        <h3>⏱️ Registra tu Tiempo</h3>
+                        <input type="text" id="taskDescription" placeholder="¿En qué estás trabajando?" style="text-align: center; margin-bottom: 15px;">
+                        <div class="timer" id="timer">00:00:00</div>
+                        <div class="timer-controls">
+                            <button class="btn-success" id="startBtn" onclick="startTimer()">▶ Iniciar</button>
+                            <button class="btn-warning hidden" id="pauseBtn" onclick="pauseTimer()">⏸ Pausar</button>
+                            <button class="btn-danger hidden" id="stopBtn" onclick="stopTimer()">⏹ Detener</button>
+                        </div>
+                    </div>
+
+                    <div class="activity-section">
+                        <h3>📋 Tu Historial de Actividades</h3>
+                        <div id="activityList"></div>
+                    </div>
+                </div>
+            `;
+
+            checkWorkSession();
+        }
+
+        function checkWorkSession() {
+            const result = storage.get(`session:${currentUser.email}`);
+            if (result) {
+                const session = JSON.parse(result.value);
+                if (session.active) {
+                    workSessionActive = true;
+                    document.getElementById('codeInputSection').classList.add('hidden');
+                    document.getElementById('workerTimerSection').classList.remove('hidden');
+                    loadActivities();
+                    return;
+                }
+            }
+        }
+
+        function validateCode() {
+            const code = document.getElementById('accessCode').value.trim().toUpperCase();
+            
+            if (!code) {
+                showError('Por favor ingresa un código');
+                return;
+            }
+
+            const result = storage.get(`code:${code}`);
+            if (!result) {
+                showError('Código inválido o no existe');
+                return;
+            }
+
+            const codeData = JSON.parse(result.value);
+
+            if (codeData.used) {
+                showError('Este código ya ha sido utilizado');
+                return;
+            }
+
+            if (codeData.forRole !== 'worker') {
+                showError('Este código no es válido para tu rol');
+                return;
+            }
+
+            codeData.used = true;
+            codeData.usedBy = currentUser.email;
+            codeData.usedAt = new Date().toISOString();
+            storage.set(`code:${code}`, JSON.stringify(codeData));
+
+            const session = {
+                active: true,
+                code: code,
+                startedAt: new Date().toISOString(),
+                startedBy: codeData.generatedBy
+            };
+            storage.set(`session:${currentUser.email}`, JSON.stringify(session));
+
+            workSessionActive = true;
+            showSuccess('¡Código validado! Tu jornada ha iniciado');
+
+            setTimeout(() => {
+                document.getElementById('codeInputSection').classList.add('hidden');
+                document.getElementById('workerTimerSection').classList.remove('hidden');
+                loadActivities();
+            }, 1500);
+        }
+
+        function startTimer() {
+            if (!currentUser) {
+                showError('Debes iniciar sesión primero');
+                return;
+            }
+
+            if (!workSessionActive && (currentUser.role === 'medio' || currentUser.role === 'basico')) {
+                showError('Necesitas validar un código antes de iniciar el cronómetro');
+                return;
+            }
+
+            isRunning = true;
+            const startBtn = document.getElementById('startBtn');
+            const pauseBtn = document.getElementById('pauseBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            
+            if (startBtn) startBtn.classList.add('hidden');
+            if (pauseBtn) pauseBtn.classList.remove('hidden');
+            if (stopBtn) stopBtn.classList.remove('hidden');
+
+            timerInterval = setInterval(() => {
+                seconds++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            if (!currentUser) return;
+            
+            isRunning = false;
+            clearInterval(timerInterval);
+            
+            const pauseBtn = document.getElementById('pauseBtn');
+            const startBtn = document.getElementById('startBtn');
+            
+            if (pauseBtn) pauseBtn.classList.add('hidden');
+            if (startBtn) startBtn.classList.remove('hidden');
+        }
+
+        function stopTimer() {
+            if (!currentUser) return;
+            
+            isRunning = false;
+            clearInterval(timerInterval);
+
+            if (seconds > 0) {
+                const taskInput = document.getElementById('taskDescription');
+                const task = taskInput ? taskInput.value.trim() : 'Actividad sin descripción';
+                
+                const activity = {
+                    task: task || 'Actividad sin descripción',
+                    duration: seconds,
+                    date: new Date().toISOString(),
+                    role: currentUser.role,
+                    userName: currentUser.name,
+                    userEmail: currentUser.email
+                };
+
+                let activities = [];
+                const result = storage.get(`activities:${currentUser.email}`);
+                if (result) {
+                    activities = JSON.parse(result.value);
+                }
+                
+                activities.push(activity);
+                storage.set(`activities:${currentUser.email}`, JSON.stringify(activities));
+
+                showSuccess('Actividad guardada exitosamente');
+                loadActivities();
+            }
+
+            seconds = 0;
+            updateTimerDisplay();
+            
+            const taskInput = document.getElementById('taskDescription');
+            const stopBtn = document.getElementById('stopBtn');
+            const pauseBtn = document.getElementById('pauseBtn');
+            const startBtn = document.getElementById('startBtn');
+            
+            if (taskInput) taskInput.value = '';
+            if (stopBtn) stopBtn.classList.add('hidden');
+            if (pauseBtn) pauseBtn.classList.add('hidden');
+            if (startBtn) startBtn.classList.remove('hidden');
+        }
+
+        function updateTimerDisplay() {
+            const timerElement = document.getElementById('timer');
+            if (!timerElement) return;
+            
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            timerElement.textContent = 
+                `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function loadActivities() {
+            if (!currentUser) return;
+            
+            const result = storage.get(`activities:${currentUser.email}`);
+            let activities = [];
+            if (result) {
+                activities = JSON.parse(result.value);
+            }
+
+            const activityList = document.getElementById('activityList');
+            if (!activityList) return;
+            
+            if (activities.length === 0) {
+                activityList.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">No hay actividades registradas</p>';
+                return;
+            }
+
+            activities.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            activityList.innerHTML = activities.map(activity => `
+                <div class="activity-item">
+                    <div class="activity-header">
+                        <div>
+                            <div style="font-weight: 600; color: #333; margin-bottom: 5px;">${activity.task}</div>
+                            <div class="activity-date">${new Date(activity.date).toLocaleString('es-ES')}</div>
+                        </div>
+                        <div class="activity-time">${formatDuration(activity.duration)}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function formatDuration(totalSeconds) {
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const secs = totalSeconds % 60;
+            
+            if (hours > 0) {
+                return `${hours}h ${minutes}m`;
+            } else if (minutes > 0) {
+                return `${minutes}m ${secs}s`;
+            } else {
+                return `${secs}s`;
+            }
+        }
+
+        function generateCode() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let code = '';
+            for (let i = 0; i < 6; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return code;
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            setTimeout(() => {
+                successDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function clearMessages() {
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+        }
+    </script>
+</body>
+</html>user:${adminEmail}`, JSON.stringify(adminUser));
                 console.log('✅ Usuario admin creado');
             }
         }
