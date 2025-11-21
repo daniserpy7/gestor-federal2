@@ -12,6 +12,8 @@ function renderAdminDashboard(container) {
         <div class="tabs">
             <button class="tab active" onclick="switchTab(event, 'users')">👥 Gestión de Usuarios</button>
             <button class="tab" onclick="switchTab(event, 'codes')">🔑 Códigos para Alto</button>
+            <button class="tab" onclick="switchTab(event, 'actas')">⚖️ Actas</button>
+            <button class="tab" onclick="switchTab(event, 'comunicados')">📢 Comunicados</button>
         </div>
 
         <div id="usersTab" class="tab-content active">
@@ -52,7 +54,7 @@ function renderAdminDashboard(container) {
         </div>
 
         <div id="codesTab" class="tab-content">
-            <div class="code-section">
+            <div class="card" style="margin-bottom: 30px;">
                 <h3>🔑 Generar Código para Usuario Alto</h3>
                 <button onclick="generateCodeForAlto()" class="btn-small">
                     Generar Nuevo Código
@@ -61,14 +63,91 @@ function renderAdminDashboard(container) {
             </div>
 
             <div class="card">
-                <h3>📋 Códigos Generados</h3>
+                <h3>🔑 Generar Código para Básico/Medio</h3>
+                <button onclick="generateCodeForWorkerAdmin()" class="btn-small">
+                    Generar Nuevo Código
+                </button>
+                <div id="adminWorkerCodeDisplay"></div>
+            </div>
+
+            <div class="card" style="margin-top: 30px;">
+                <h3>📋 Códigos para Alto Generados</h3>
                 <div id="adminCodesList"></div>
+            </div>
+
+            <div class="card" style="margin-top: 30px;">
+                <h3>📋 Códigos para Básico/Medio Generados</h3>
+                <div id="adminWorkerCodesList"></div>
+            </div>
+        </div>
+
+        <div id="actasTab" class="tab-content">
+            <div class="card">
+                <h3>⚖️ Crear Nueva Acta</h3>
+                <div class="form-group">
+                    <label for="actaUser">Seleccionar Usuario</label>
+                    <select id="actaUser"></select>
+                </div>
+                <div class="form-group">
+                    <label for="actaMotivo">Motivo de Amonestación</label>
+                    <textarea id="actaMotivo" placeholder="Describa detalladamente el motivo..."></textarea>
+                </div>
+                <button onclick="createActaAdmin()">Crear y Autorizar Acta</button>
+            </div>
+
+            <div class="card" style="margin-top: 30px;">
+                <h3>📋 Actas Pendientes de Autorización</h3>
+                <div id="actasPendingList"></div>
+            </div>
+
+            <div class="card" style="margin-top: 30px;">
+                <h3>📋 Todas las Actas</h3>
+                <div id="actasList"></div>
+            </div>
+        </div>
+
+        <div id="comunicadosTab" class="tab-content">
+            <div class="card">
+                <h3>📢 Crear Nuevo Comunicado</h3>
+                <div class="form-group">
+                    <label for="comunicadoTipo">Tipo de Comunicado</label>
+                    <select id="comunicadoTipo">
+                        <option value="normal">Normal</option>
+                        <option value="urgente">Urgente</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="comunicadoDestinatario">Destinatario</label>
+                    <select id="comunicadoDestinatario">
+                        <option value="todos">Todos los usuarios</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="comunicadoAsunto">Asunto</label>
+                    <input type="text" id="comunicadoAsunto" placeholder="Asunto del comunicado">
+                </div>
+                <div class="form-group">
+                    <label for="comunicadoContenido">Contenido</label>
+                    <textarea id="comunicadoContenido" placeholder="Escriba el contenido del comunicado..."></textarea>
+                </div>
+                <button onclick="createComunicado()">Enviar Comunicado</button>
+            </div>
+
+            <div class="card" style="margin-top: 30px;">
+                <h3>📋 Comunicados Enviados</h3>
+                <div id="comunicadosList"></div>
             </div>
         </div>
     `;
 
     loadAllUsers();
     loadAdminCodes();
+    loadAdminWorkerCodes();
+    loadUsersForActa();
+    loadUsersForComunicado();
+    loadActasPending();
+    loadAllActas();
+    loadComunicados();
 }
 
 function switchTab(event, tabName) {
@@ -201,7 +280,7 @@ function generateCodeForAlto() {
 
     document.getElementById('adminCodeDisplay').innerHTML = `
         <div class="code-display">${code}</div>
-        <p style="text-align: center; color: #666;">Código generado exitosamente. Compártelo con un usuario Alto.</p>
+        <p style="text-align: center; color: #666;">Código generado. Compártelo con un usuario Alto.</p>
     `;
     
     loadAdminCodes();
@@ -241,6 +320,71 @@ function loadAdminCodes() {
     document.getElementById('adminCodesList').innerHTML = html;
 }
 
+function generateCodeForWorkerAdmin() {
+    const code = generateCode();
+    const codeData = {
+        code: code,
+        forRole: 'worker',
+        generatedBy: currentUser.email,
+        generatedAt: new Date().toISOString(),
+        used: false,
+        usedBy: null
+    };
+
+    storage.set(`code:${code}`, JSON.stringify(codeData));
+    
+    let allCodes = [];
+    const result = storage.get('admin:worker:codes');
+    if (result) allCodes = JSON.parse(result.value);
+    
+    allCodes.push(code);
+    storage.set('admin:worker:codes', JSON.stringify(allCodes));
+
+    document.getElementById('adminWorkerCodeDisplay').innerHTML = `
+        <div class="code-display">${code}</div>
+        <p style="text-align: center; color: #666;">Código generado. Compártelo con usuarios Básico o Medio.</p>
+    `;
+    
+    loadAdminWorkerCodes();
+    showSuccess('Código generado exitosamente');
+}
+
+function loadAdminWorkerCodes() {
+    const result = storage.get('admin:worker:codes');
+    const container = document.getElementById('adminWorkerCodesList');
+    if (!container) return;
+    
+    if (!result) {
+        container.innerHTML = '<p style="color: #999;">No hay códigos generados</p>';
+        return;
+    }
+
+    const codes = JSON.parse(result.value);
+    let html = '<table class="data-table"><thead><tr><th>Código</th><th>Generado</th><th>Estado</th><th>Usado por</th></tr></thead><tbody>';
+
+    for (const code of codes) {
+        const codeResult = storage.get(`code:${code}`);
+        if (codeResult) {
+            const codeData = JSON.parse(codeResult.value);
+            const date = new Date(codeData.generatedAt).toLocaleString('es-ES');
+            const status = codeData.used ? 
+                `<span class="badge-used">✓ Usado</span>` : 
+                `<span class="badge-unused">⏳ Pendiente</span>`;
+            const usedBy = codeData.usedBy || '-';
+            
+            html += `<tr>
+                <td><strong>${code}</strong></td>
+                <td>${date}</td>
+                <td>${status}</td>
+                <td>${usedBy}</td>
+            </tr>`;
+        }
+    }
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
 // Dashboard Alto
 function renderAltoDashboard(container) {
     container.innerHTML = `
@@ -252,45 +396,180 @@ function renderAltoDashboard(container) {
             <button class="logout-btn" onclick="logout()">Cerrar Sesión</button>
         </div>
 
-        <div class="grid-2">
-            <div class="code-section">
-                <h3>🔑 Generar Código para Medio/Básico</h3>
-                <button onclick="generateCodeForWorker()" style="width: 100%; padding: 12px;">
-                    Generar Nuevo Código
-                </button>
-                <div id="altoCodeDisplay"></div>
+        <div id="codeInputSectionAlto" class="code-input-section">
+            <h3>🔐 Solicitar Código de Admin</h3>
+            <div class="code-status status-pending">
+                ⚠️ Necesitas un código de Admin para iniciar tu jornada
             </div>
-
-            <div class="card">
-                <h3>📊 Estadísticas</h3>
-                <div class="stat-number" id="altoStats">0</div>
-                <p style="color: #666;">Códigos generados</p>
+            <div class="form-group">
+                <label for="accessCodeAlto">Ingresa el código proporcionado por Admin:</label>
+                <input type="text" id="accessCodeAlto" placeholder="Ejemplo: ABC123" style="text-transform: uppercase;">
             </div>
+            <button onclick="validateCodeAlto()">Validar Código e Iniciar Jornada</button>
         </div>
 
-        <div class="timer-section">
-            <h3>⏱️ Tu Cronómetro</h3>
-            <input type="text" id="taskDescription" placeholder="¿En qué estás trabajando?" style="text-align: center; margin-bottom: 15px;">
-            <div class="timer" id="timer">00:00:00</div>
-            <div class="timer-controls">
-                <button class="btn-success" id="startBtn" onclick="startTimer()">▶ Iniciar</button>
-                <button class="btn-warning hidden" id="pauseBtn" onclick="pauseTimer()">⏸ Pausar</button>
-                <button class="btn-danger hidden" id="stopBtn" onclick="stopTimer()">⏹ Detener</button>
+        <div id="altoActiveSection" class="hidden">
+            <div class="code-status status-active" style="margin-bottom: 30px;">
+                ✅ Jornada activa
             </div>
-        </div>
 
-        <div class="activity-section">
-            <h3>📋 Tu Historial de Actividades</h3>
-            <div id="activityList"></div>
-        </div>
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab(event, 'timer')">⏱️ Cronómetro</button>
+                <button class="tab" onclick="switchTab(event, 'codes')">🔑 Códigos</button>
+                <button class="tab" onclick="switchTab(event, 'actas')">⚖️ Actas</button>
+                <button class="tab" onclick="switchTab(event, 'alertas')">🔔 Alertas</button>
+                <button class="tab" onclick="switchTab(event, 'comunicados')">📢 Comunicados</button>
+            </div>
 
-        <div class="card" style="margin-top: 30px;">
-            <h3>📋 Códigos Generados por Ti</h3>
-            <div id="altoCodesList"></div>
+            <div id="timerTab" class="tab-content active">
+                <div class="timer-section">
+                    <h3>⏱️ Tu Cronómetro</h3>
+                    <input type="text" id="taskDescription" placeholder="¿En qué estás trabajando?" style="text-align: center; margin-bottom: 15px;">
+                    <div class="timer" id="timer">00:00:00</div>
+                    <div class="timer-controls">
+                        <button class="btn-success" id="startBtn" onclick="startTimer()">▶ Iniciar</button>
+                        <button class="btn-warning hidden" id="pauseBtn" onclick="pauseTimer()">⏸ Pausar</button>
+                        <button class="btn-danger hidden" id="stopBtn" onclick="stopTimer()">⏹ Detener</button>
+                    </div>
+                </div>
+
+                <div class="activity-section">
+                    <h3>📋 Tu Historial de Actividades</h3>
+                    <div id="activityList"></div>
+                </div>
+            </div>
+
+            <div id="codesTab" class="tab-content">
+                <div class="grid-2">
+                    <div class="code-section">
+                        <h3>🔑 Generar Código para Básico/Medio</h3>
+                        <button onclick="generateCodeForWorker()" style="width: 100%; padding: 12px;">
+                            Generar Nuevo Código
+                        </button>
+                        <div id="altoCodeDisplay"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3>📊 Estadísticas</h3>
+                        <div class="stat-number" id="altoStats">0</div>
+                        <p style="color: #666;">Códigos generados</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📋 Códigos Generados por Ti</h3>
+                    <div id="altoCodesList"></div>
+                </div>
+            </div>
+
+            <div id="actasTab" class="tab-content">
+                <div class="card">
+                    <h3>⚖️ Crear Nueva Acta de Amonestación</h3>
+                    <div class="form-group">
+                        <label for="actaUserAlto">Seleccionar Usuario</label>
+                        <select id="actaUserAlto"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="actaMotivoAlto">Motivo de Amonestación</label>
+                        <textarea id="actaMotivoAlto" placeholder="Describa detalladamente el motivo..."></textarea>
+                    </div>
+                    <button onclick="createActaAlto()">Crear Acta (Requiere Autorización)</button>
+                </div>
+
+                <div class="card" style="margin-top: 30px;">
+                    <h3>📋 Mis Actas Creadas</h3>
+                    <div id="misActasList"></div>
+                </div>
+            </div>
+
+            <div id="alertasTab" class="tab-content">
+                <div class="card">
+                    <h3>🔔 Mis Alertas</h3>
+                    <div id="alertasList"></div>
+                </div>
+            </div>
+
+            <div id="comunicadosTab" class="tab-content">
+                <div class="card">
+                    <h3>📢 Comunicados</h3>
+                    <div id="comunicadosUserList"></div>
+                </div>
+            </div>
         </div>
     `;
 
-    loadAltoData();
+    checkWorkSessionAlto();
+}
+
+function checkWorkSessionAlto() {
+    const result = storage.get(`session:${currentUser.email}`);
+    if (result) {
+        const session = JSON.parse(result.value);
+        if (session.active) {
+            workSessionActive = true;
+            document.getElementById('codeInputSectionAlto').classList.add('hidden');
+            document.getElementById('altoActiveSection').classList.remove('hidden');
+            loadAltoData();
+            loadUsersForActaAlto();
+            loadMisActas();
+            loadAlertasUser();
+            loadComunicadosUser();
+            return;
+        }
+    }
+}
+
+function validateCodeAlto() {
+    const code = document.getElementById('accessCodeAlto').value.trim().toUpperCase();
+    
+    if (!code) {
+        showError('Por favor ingresa un código');
+        return;
+    }
+
+    const result = storage.get(`code:${code}`);
+    if (!result) {
+        showError('Código inválido o no existe');
+        return;
+    }
+
+    const codeData = JSON.parse(result.value);
+
+    if (codeData.used) {
+        showError('Este código ya ha sido utilizado');
+        return;
+    }
+
+    if (codeData.forRole !== 'alto') {
+        showError('Este código no es para usuarios Alto');
+        return;
+    }
+
+    codeData.used = true;
+    codeData.usedBy = currentUser.email;
+    codeData.usedAt = new Date().toISOString();
+    storage.set(`code:${code}`, JSON.stringify(codeData));
+
+    const session = {
+        active: true,
+        code: code,
+        startedAt: new Date().toISOString(),
+        startedBy: codeData.generatedBy
+    };
+    storage.set(`session:${currentUser.email}`, JSON.stringify(session));
+
+    workSessionActive = true;
+    showSuccess('¡Código validado! Tu jornada ha iniciado');
+
+    setTimeout(() => {
+        document.getElementById('codeInputSectionAlto').classList.add('hidden');
+        document.getElementById('altoActiveSection').classList.remove('hidden');
+        loadAltoData();
+        loadUsersForActaAlto();
+        loadMisActas();
+        loadAlertasUser();
+        loadComunicadosUser();
+    }, 1500);
 }
 
 function generateCodeForWorker() {
@@ -418,6 +697,8 @@ function checkWorkSession() {
             document.getElementById('codeInputSection').classList.add('hidden');
             document.getElementById('workerTimerSection').classList.remove('hidden');
             loadActivities();
+            loadAlertasUser();
+            loadComunicadosUser();
             return;
         }
     }
@@ -469,6 +750,8 @@ function validateCode() {
         document.getElementById('codeInputSection').classList.add('hidden');
         document.getElementById('workerTimerSection').classList.remove('hidden');
         loadActivities();
+        loadAlertasUser();
+        loadComunicadosUser();
     }, 1500);
 }
 
@@ -602,3 +885,478 @@ function loadActivities() {
 }
 
 console.log('✅ dashboard.js cargado');
+
+// ===== FUNCIONES PARA ACTAS =====
+
+function loadUsersForActa() {
+    const result = storage.get('all:users');
+    const select = document.getElementById('actaUser');
+    if (!select) return;
+    
+    if (!result) {
+        select.innerHTML = '<option value="">No hay usuarios</option>';
+        return;
+    }
+
+    const userEmails = JSON.parse(result.value);
+    let options = '<option value="">Seleccione un usuario</option>';
+    
+    for (const email of userEmails) {
+        const userResult = storage.get(`user:${email}`);
+        if (userResult) {
+            const user = JSON.parse(userResult.value);
+            if (user.email !== currentUser.email) {
+                options += `<option value="${user.email}">${user.name} (${user.role})</option>`;
+            }
+        }
+    }
+    
+    select.innerHTML = options;
+}
+
+function createActaAdmin() {
+    const userEmail = document.getElementById('actaUser').value;
+    const motivo = document.getElementById('actaMotivo').value.trim();
+    
+    if (!userEmail) {
+        showError('Selecciona un usuario');
+        return;
+    }
+    
+    if (!motivo) {
+        showError('Escribe el motivo de la amonestación');
+        return;
+    }
+    
+    const acta = {
+        id: 'acta_' + Date.now(),
+        targetUser: userEmail,
+        createdBy: currentUser.email,
+        createdByName: currentUser.name,
+        motivo: motivo,
+        fecha: new Date().toISOString(),
+        autorizada: true,
+        autorizadaPor: currentUser.email,
+        autorizadaPorNombre: currentUser.name
+    };
+    
+    let allActas = [];
+    const result = storage.get('all:actas');
+    if (result) allActas = JSON.parse(result.value);
+    allActas.push(acta);
+    storage.set('all:actas', JSON.stringify(allActas));
+    
+    showSuccess('Acta creada y autorizada exitosamente');
+    document.getElementById('actaMotivo').value = '';
+    document.getElementById('actaUser').value = '';
+    loadAllActas();
+}
+
+function loadActasPending() {
+    const result = storage.get('all:actas');
+    const container = document.getElementById('actasPendingList');
+    if (!container) return;
+    
+    if (!result) {
+        container.innerHTML = '<p style="color: #999;">No hay actas pendientes</p>';
+        return;
+    }
+    
+    const actas = JSON.parse(result.value).filter(a => !a.autorizada);
+    
+    if (actas.length === 0) {
+        container.innerHTML = '<p style="color: #999;">No hay actas pendientes</p>';
+        return;
+    }
+    
+    let html = '';
+    for (const acta of actas) {
+        const userResult = storage.get(`user:${acta.targetUser}`);
+        const userName = userResult ? JSON.parse(userResult.value).name : acta.targetUser;
+        
+        html += `
+            <div class="activity-item">
+                <div><strong>Para:</strong> ${userName}</div>
+                <div><strong>Creada por:</strong> ${acta.createdByName}</div>
+                <div><strong>Motivo:</strong> ${acta.motivo}</div>
+                <div><strong>Fecha:</strong> ${new Date(acta.fecha).toLocaleString('es-ES')}</div>
+                <div style="margin-top: 10px;">
+                    <button class="btn-success btn-small" onclick="autorizarActa('${acta.id}')">Autorizar</button>
+                    <button class="btn-danger btn-small" onclick="rechazarActa('${acta.id}')">Rechazar</button>
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+
+function loadUsersForActaAlto() {
+    const result = storage.get('all:users');
+    const select = document.getElementById('actaUserAlto');
+    if (!select) return;
+    
+    if (!result) {
+        select.innerHTML = '<option value="">No hay usuarios</option>';
+        return;
+    }
+
+    const userEmails = JSON.parse(result.value);
+    let options = '<option value="">Seleccione un usuario</option>';
+    
+    for (const email of userEmails) {
+        const userResult = storage.get(`user:${email}`);
+        if (userResult) {
+            const user = JSON.parse(userResult.value);
+            if (user.email !== currentUser.email && user.role !== 'admin') {
+                options += `<option value="${user.email}">${user.name} (${user.role})</option>`;
+            }
+        }
+    }
+    
+    select.innerHTML = options;
+}
+
+function createActaAlto() {
+    const userEmail = document.getElementById('actaUserAlto').value;
+    const motivo = document.getElementById('actaMotivoAlto').value.trim();
+    
+    if (!userEmail) {
+        showError('Selecciona un usuario');
+        return;
+    }
+    
+    if (!motivo) {
+        showError('Escribe el motivo de la amonestación');
+        return;
+    }
+    
+    const acta = {
+        id: 'acta_' + Date.now(),
+        targetUser: userEmail,
+        createdBy: currentUser.email,
+        createdByName: currentUser.name,
+        motivo: motivo,
+        fecha: new Date().toISOString(),
+        autorizada: false,
+        autorizadaPor: null,
+        autorizadaPorNombre: null
+    };
+    
+    let allActas = [];
+    const result = storage.get('all:actas');
+    if (result) allActas = JSON.parse(result.value);
+    allActas.push(acta);
+    storage.set('all:actas', JSON.stringify(allActas));
+    
+    showSuccess('Acta creada. Solicita a un Admin que la autorice.');
+    document.getElementById('actaMotivoAlto').value = '';
+    document.getElementById('actaUserAlto').value = '';
+    loadMisActas();
+}
+
+function loadMisActas() {
+    const result = storage.get('all:actas');
+    const container = document.getElementById('misActasList');
+    if (!container) return;
+    
+    if (!result) {
+        container.innerHTML = '<p style="color: #999;">No has creado actas</p>';
+        return;
+    }
+    
+    const actas = JSON.parse(result.value).filter(a => a.createdBy === currentUser.email);
+    
+    if (actas.length === 0) {
+        container.innerHTML = '<p style="color: #999;">No has creado actas</p>';
+        return;
+    }
+    
+    actas.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    
+    let html = '';
+    for (const acta of actas) {
+        const userResult = storage.get(`user:${acta.targetUser}`);
+        const userName = userResult ? JSON.parse(userResult.value).name : acta.targetUser;
+        const status = acta.autorizada ? 
+            '<span class="badge-used">✓ Autorizada</span>' : 
+            '<span class="badge-unused">⏳ Pendiente</span>';
+        
+        html += `
+            <div class="activity-item">
+                <div><strong>Para:</strong> ${userName}</div>
+                <div><strong>Estado:</strong> ${status}</div>
+                <div><strong>Motivo:</strong> ${acta.motivo}</div>
+                <div><strong>Fecha:</strong> ${new Date(acta.fecha).toLocaleString('es-ES')}</div>
+                ${acta.autorizada ? `<div><strong>Autorizada por:</strong> ${acta.autorizadaPorNombre}</div>` : ''}
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+
+function loadAlertasUser() {
+    const container = document.getElementById('alertasList');
+    if (!container) return;
+    
+    let alertas = [];
+    
+    // Cargar actas dirigidas al usuario
+    const actasResult = storage.get('all:actas');
+    if (actasResult) {
+        const actas = JSON.parse(actasResult.value)
+            .filter(a => a.targetUser === currentUser.email && a.autorizada);
+        
+        for (const acta of actas) {
+            alertas.push({
+                tipo: 'acta',
+                titulo: '⚖️ Nueva Acta de Amonestación',
+                contenido: acta.motivo,
+                de: acta.createdByName,
+                fecha: acta.fecha
+            });
+        }
+    }
+    
+    // Cargar comunicados dirigidos específicamente al usuario
+    const comunicadosResult = storage.get('all:comunicados');
+    if (comunicadosResult) {
+        const comunicados = JSON.parse(comunicadosResult.value)
+            .filter(c => c.destinatario === currentUser.email);
+        
+        for (const com of comunicados) {
+            const icono = com.tipo === 'urgente' ? '🚨' : '📧';
+            alertas.push({
+                tipo: 'comunicado',
+                titulo: `${icono} ${com.asunto}`,
+                contenido: com.contenido,
+                de: com.createdByName,
+                fecha: com.fecha,
+                urgente: com.tipo === 'urgente'
+            });
+        }
+    }
+    
+    if (alertas.length === 0) {
+        container.innerHTML = '<p style="color: #999;">No tienes alertas</p>';
+        return;
+    }
+    
+    alertas.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    
+    let html = '';
+    for (const alerta of alertas) {
+        const styleClass = alerta.urgente ? 'style="border-left: 5px solid #e74c3c;"' : '';
+        html += `
+            <div class="activity-item" ${styleClass}>
+                <div><strong>${alerta.titulo}</strong></div>
+                <div>${alerta.contenido}</div>
+                <div><strong>De:</strong> ${alerta.de}</div>
+                <div class="activity-date">${new Date(alerta.fecha).toLocaleString('es-ES')}</div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+
+function loadComunicadosUser() {
+    const container = document.getElementById('comunicadosUserList');
+    if (!container) return;
+    
+    const result = storage.get('all:comunicados');
+    if (!result) {
+        container.innerHTML = '<p style="color: #999;">No hay comunicados</p>';
+        return;
+    }
+    
+    const comunicados = JSON.parse(result.value)
+        .filter(c => c.destinatario === 'todos');
+    
+    if (comunicados.length === 0) {
+        container.innerHTML = '<p style="color: #999;">No hay comunicados generales</p>';
+        return;
+    }
+    
+    comunicados.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    
+    let html = '';
+    for (const com of comunicados) {
+        const styleClass = com.tipo === 'urgente' ? 'style="border-left: 5px solid #e74c3c;"' : '';
+        const icono = com.tipo === 'urgente' ? '🚨' : '📢';
+        
+        html += `
+            <div class="activity-item" ${styleClass}>
+                <div><strong>${icono} ${com.asunto}</strong></div>
+                <div>${com.contenido}</div>
+                <div><strong>De:</strong> ${com.createdByName}</div>
+                <div class="activity-date">${new Date(com.fecha).toLocaleString('es-ES')}</div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+
+function autorizarActa(actaId) {
+    const result = storage.get('all:actas');
+    if (!result) return;
+    
+    let actas = JSON.parse(result.value);
+    const acta = actas.find(a => a.id === actaId);
+    
+    if (acta) {
+        acta.autorizada = true;
+        acta.autorizadaPor = currentUser.email;
+        acta.autorizadaPorNombre = currentUser.name;
+        acta.fechaAutorizacion = new Date().toISOString();
+        
+        storage.set('all:actas', JSON.stringify(actas));
+        showSuccess('Acta autorizada exitosamente');
+        loadActasPending();
+        loadAllActas();
+    }
+}
+
+function rechazarActa(actaId) {
+    if (!confirm('¿Estás seguro de rechazar esta acta?')) return;
+    
+    const result = storage.get('all:actas');
+    if (!result) return;
+    
+    let actas = JSON.parse(result.value);
+    actas = actas.filter(a => a.id !== actaId);
+    
+    storage.set('all:actas', JSON.stringify(actas));
+    showSuccess('Acta rechazada');
+    loadActasPending();
+    loadAllActas();
+}
+
+function loadAllActas() {
+    const result = storage.get('all:actas');
+    const container = document.getElementById('actasList');
+    if (!container) return;
+    
+    if (!result) {
+        container.innerHTML = '<p style="color: #999;">No hay actas registradas</p>';
+        return;
+    }
+    
+    const actas = JSON.parse(result.value).filter(a => a.autorizada);
+    
+    if (actas.length === 0) {
+        container.innerHTML = '<p style="color: #999;">No hay actas autorizadas</p>';
+        return;
+    }
+    
+    actas.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    
+    let html = '';
+    for (const acta of actas) {
+        const userResult = storage.get(`user:${acta.targetUser}`);
+        const userName = userResult ? JSON.parse(userResult.value).name : acta.targetUser;
+        
+        html += `
+            <div class="activity-item">
+                <div><strong>Para:</strong> ${userName}</div>
+                <div><strong>Creada por:</strong> ${acta.createdByName}</div>
+                <div><strong>Autorizada por:</strong> ${acta.autorizadaPorNombre}</div>
+                <div><strong>Motivo:</strong> ${acta.motivo}</div>
+                <div><strong>Fecha:</strong> ${new Date(acta.fecha).toLocaleString('es-ES')}</div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+
+// ===== FUNCIONES PARA COMUNICADOS =====
+
+function loadUsersForComunicado() {
+    const result = storage.get('all:users');
+    const select = document.getElementById('comunicadoDestinatario');
+    if (!select) return;
+    
+    let options = '<option value="todos">Todos los usuarios</option>';
+    
+    if (result) {
+        const userEmails = JSON.parse(result.value);
+        
+        for (const email of userEmails) {
+            const userResult = storage.get(`user:${email}`);
+            if (userResult) {
+                const user = JSON.parse(userResult.value);
+                options += `<option value="${user.email}">${user.name} (${user.role})</option>`;
+            }
+        }
+    }
+    
+    select.innerHTML = options;
+}
+
+function createComunicado() {
+    const tipo = document.getElementById('comunicadoTipo').value;
+    const destinatario = document.getElementById('comunicadoDestinatario').value;
+    const asunto = document.getElementById('comunicadoAsunto').value.trim();
+    const contenido = document.getElementById('comunicadoContenido').value.trim();
+    
+    if (!asunto || !contenido) {
+        showError('Completa el asunto y contenido');
+        return;
+    }
+    
+    const comunicado = {
+        id: 'com_' + Date.now(),
+        tipo: tipo,
+        destinatario: destinatario,
+        asunto: asunto,
+        contenido: contenido,
+        createdBy: currentUser.email,
+        createdByName: currentUser.name,
+        fecha: new Date().toISOString()
+    };
+    
+    let allComunicados = [];
+    const result = storage.get('all:comunicados');
+    if (result) allComunicados = JSON.parse(result.value);
+    allComunicados.push(comunicado);
+    storage.set('all:comunicados', JSON.stringify(allComunicados));
+    
+    showSuccess('Comunicado enviado exitosamente');
+    document.getElementById('comunicadoAsunto').value = '';
+    document.getElementById('comunicadoContenido').value = '';
+    loadComunicados();
+}
+
+function loadComunicados() {
+    const result = storage.get('all:comunicados');
+    const container = document.getElementById('comunicadosList');
+    if (!container) return;
+    
+    if (!result) {
+        container.innerHTML = '<p style="color: #999;">No hay comunicados</p>';
+        return;
+    }
+    
+    const comunicados = JSON.parse(result.value);
+    comunicados.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    
+    let html = '';
+    for (const com of comunicados) {
+        const tipoClass = com.tipo === 'urgente' ? 'badge-unused' : '';
+        const destinatarioText = com.destinatario === 'todos' ? 'Todos los usuarios' : com.destinatario;
+        
+        html += `
+            <div class="activity-item">
+                <div><strong class="${tipoClass}">${com.tipo.toUpperCase()}</strong> - ${com.asunto}</div>
+                <div><strong>Para:</strong> ${destinatarioText}</div>
+                <div>${com.contenido}</div>
+                <div class="activity-date">${new Date(com.fecha).toLocaleString('es-ES')}</div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
