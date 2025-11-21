@@ -153,6 +153,10 @@ function showDashboard() {
     
     const authSection = document.getElementById('authSection');
     const dashboard = document.getElementById('dashboard');
+    const body = document.body;
+    
+    // Aplicar tema según rol
+    body.className = `theme-${currentUser.role}`;
     
     if (authSection) {
         authSection.classList.add('hidden');
