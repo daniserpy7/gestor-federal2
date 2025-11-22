@@ -1,9 +1,6 @@
 // Variables globales
 let currentUser = null;
-let timerInterval = null;
-let seconds = 0;
-let isRunning = false;
-let workSessionActive = false;
+let timerUpdateInterval = null;
 
 console.log('✅ app.js cargado');
 
@@ -112,15 +109,15 @@ function login() {
 // Logout
 function logout() {
     try {
-        if (isRunning) {
-            isRunning = false;
-            clearInterval(timerInterval);
-            seconds = 0;
+        if (timerUpdateInterval) {
+            clearInterval(timerUpdateInterval);
         }
         
         storage.delete('currentUser');
         currentUser = null;
-        workSessionActive = false;
+        
+        // Remover tema
+        document.body.className = '';
         
         const dashboard = document.getElementById('dashboard');
         const authSection = document.getElementById('authSection');
@@ -189,12 +186,134 @@ function showDashboard() {
     }
 }
 
+// SISTEMA DE CRONÓMETROS PERSISTENTES
+
+function startTimerForUser(userEmail) {
+    const timerData = {
+        userEmail: userEmail,
+        startTime: Date.now(),
+        isRunning: true
+    };
+    
+    storage.set(`timer:${userEmail}`, JSON.stringify(timerData));
+    console.log('⏱️ Cronómetro iniciado para:', userEmail);
+}
+
+function getTimerSeconds(userEmail) {
+    const result = storage.get(`timer:${userEmail}`);
+    if (!result) return 0;
+    
+    const timerData = JSON.parse(result.value);
+    if (!timerData.isRunning) return 0;
+    
+    const elapsed = Math.floor((Date.now() - timerData.startTime) / 1000);
+    return elapsed;
+}
+
+function stopTimerForUser(userEmail, motivo = null) {
+    const result = storage.get(`timer:${userEmail}`);
+    if (!result) return;
+    
+    const timerData = JSON.parse(result.value);
+    if (!timerData.isRunning) return;
+    
+    const totalSeconds = Math.floor((Date.now() - timerData.startTime) / 1000);
+    
+    // Guardar en historial
+    const activity = {
+        duration: totalSeconds,
+        startTime: timerData.startTime,
+        endTime: Date.now(),
+        date: new Date().toISOString(),
+        stoppedBy: currentUser.email,
+        stoppedByName: currentUser.name,
+        motivo: motivo
+    };
+    
+    let activities = [];
+    const activitiesResult = storage.get(`activities:${userEmail}`);
+    if (activitiesResult) {
+        activities = JSON.parse(activitiesResult.value);
+    }
+    activities.push(activity);
+    storage.set(`activities:${userEmail}`, JSON.stringify(activities));
+    
+    // Detener cronómetro
+    storage.delete(`timer:${userEmail}`);
+    
+    // Desactivar sesión
+    storage.delete(`session:${userEmail}`);
+    
+    console.log('⏹️ Cronómetro detenido para:', userEmail);
+}
+
+function adjustTimerForUser(userEmail, secondsToSubtract, motivo) {
+    const result = storage.get(`timer:${userEmail}`);
+    if (!result) return false;
+    
+    const timerData = JSON.parse(result.value);
+    if (!timerData.isRunning) return false;
+    
+    // Ajustar el tiempo de inicio (adelantarlo)
+    timerData.startTime = timerData.startTime + (secondsToSubtract * 1000);
+    
+    // Guardar registro del ajuste
+    let adjustments = [];
+    const adjustResult = storage.get(`adjustments:${userEmail}`);
+    if (adjustResult) {
+        adjustments = JSON.parse(adjustResult.value);
+    }
+    
+    adjustments.push({
+        adjustedBy: currentUser.email,
+        adjustedByName: currentUser.name,
+        secondsSubtracted: secondsToSubtract,
+        motivo: motivo,
+        date: new Date().toISOString()
+    });
+    
+    storage.set(`adjustments:${userEmail}`, JSON.stringify(adjustments));
+    storage.set(`timer:${userEmail}`, JSON.stringify(timerData));
+    
+    console.log('⏱️ Tiempo ajustado para:', userEmail, '- Restados:', secondsToSubtract, 'segundos');
+    return true;
+}
+
+function getAllActiveTimers() {
+    const users = [];
+    const usersResult = storage.get('all:users');
+    if (!usersResult) return [];
+    
+    const userEmails = JSON.parse(usersResult.value);
+    
+    for (const email of userEmails) {
+        const timerResult = storage.get(`timer:${email}`);
+        if (timerResult) {
+            const timerData = JSON.parse(timerResult.value);
+            if (timerData.isRunning) {
+                const userResult = storage.get(`user:${email}`);
+                if (userResult) {
+                    const user = JSON.parse(userResult.value);
+                    users.push({
+                        email: email,
+                        name: user.name,
+                        role: user.role,
+                        seconds: getTimerSeconds(email)
+                    });
+                }
+            }
+        }
+    }
+    
+    return users;
+}
+
 // Funciones de utilidad
 function generateCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let code = '';
     for (let i = 0; i < 6; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
+        code += chars.charAt(Math.random() * chars.length);
     }
     return code;
 }
@@ -204,13 +323,7 @@ function formatDuration(totalSeconds) {
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const secs = totalSeconds % 60;
     
-    if (hours > 0) {
-        return `${hours}h ${minutes}m`;
-    } else if (minutes > 0) {
-        return `${minutes}m ${secs}s`;
-    } else {
-        return `${secs}s`;
-    }
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
 function showError(message) {
