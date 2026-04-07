@@ -3,43 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Control Laboral Federal</title>
+    <title>Gestor Federal - Sistema de Tiempos</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>⏱️ Sistema de Control Laboral Federal</h1>
-            <div id="headerInfo"></div>
-        </div>
-
-        <div class="content">
-            <div class="error-message" id="errorMessage"></div>
-            <div class="success-message" id="successMessage"></div>
-
-            <div id="authSection" class="auth-section">
-                <h2 style="text-align: center; margin-bottom: 30px; color: #333;">Iniciar Sesión</h2>
-                <div class="form-group">
-                    <label for="loginEmail">Correo Electrónico</label>
-                    <input type="email" id="loginEmail" placeholder="admin@sistema.com" value="admin@sistema.com">
-                </div>
-                <div class="form-group">
-                    <label for="loginPassword">Contraseña</label>
-                    <input type="password" id="loginPassword" placeholder="Admin123!" value="Admin123!">
-                </div>
-                <button id="loginBtn">Iniciar Sesión</button>
-                <p style="text-align: center; margin-top: 20px; color: #666; font-size: 14px;">
-                    Usuario por defecto: <strong>admin@sistema.com</strong><br>
-                    Contraseña: <strong>Admin123!</strong>
-                </p>
-            </div>
-
-            <div id="dashboard" class="dashboard"></div>
-        </div>
+    <div id="login-container">
+        <h1>Gestor Federal</h1>
+        <select id="role-selector">
+            <option value="">Selecciona tu rango</option>
+            <option value="inicial">Cargo Inicial</option>
+            <option value="medio">Cargo Medio</option>
+            <option value="alto">Cargo Alto</option>
+            <option value="admin">Administrativo</option>
+        </select>
+        <input type="text" id="username" placeholder="Tu nombre o ID">
+        <button onclick="app.login()">Entrar</button>
     </div>
 
+    <div id="main-dashboard" class="hidden">
+        <header>
+            <h2 id="display-role">Rango</h2>
+            <span id="display-name">Usuario</span>
+            <button onclick="app.logout()">Salir</button>
+        </header>
+
+        <section id="timer-section" class="card">
+            <h3>Cronómetro</h3>
+            <div id="timer-display">00:00:00</div>
+            <div id="timer-controls">
+                </div>
+            <div id="auth-code-input" class="hidden">
+                <input type="text" id="input-token" placeholder="Código de activación">
+                <button onclick="dashboard.validateToken()">Activar</button>
+            </div>
+        </section>
+
+        <section id="management-section" class="card hidden">
+            <h3>Panel de Control</h3>
+            <div id="code-generator">
+                <button onclick="dashboard.generateCode()">Generar Código</button>
+                <p>Código actual: <strong id="generated-code">----</strong></p>
+            </div>
+            <div id="subordinates-list">
+                <h4>Subordinados Activos</h4>
+                <div id="sub-container"></div>
+            </div>
+        </section>
+
+        <section id="comms-section" class="card">
+            <h3>Comunicados y Alertas</h3>
+            <div id="comms-list"></div>
+            <div id="admin-comms" class="hidden">
+                <textarea id="msg-text" placeholder="Escribe un mensaje..."></textarea>
+                <select id="msg-target">
+                    <option value="all">Todos</option>
+                    <option value="inicial">Iniciales</option>
+                    <option value="medio">Medios</option>
+                </select>
+                <button onclick="dashboard.sendMsg('comunicado')">Enviar Comunicado</button>
+                <button onclick="dashboard.sendMsg('alerta')">Enviar Alerta (Penalización)</button>
+            </div>
+        </section>
+
+        <section id="history-section" class="card hidden">
+            <h3>Historial de Autorizaciones</h3>
+            <ul id="history-log"></ul>
+        </section>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
     <script src="storage.js"></script>
-    <script src="app.js"></script>
     <script src="dashboard.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
